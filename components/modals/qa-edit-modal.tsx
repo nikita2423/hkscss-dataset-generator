@@ -25,14 +25,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+
 import { StarRating } from "@/components/ui/star-rating";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Edit, Sparkles, Plus, X, Check, ChevronDown } from "lucide-react";
@@ -46,7 +39,11 @@ interface QAEditModalProps {
     id: string;
     question: string;
     answer?: string;
-    answers?: Array<{ answer: string }>;
+    answers?: Array<{
+      id?: string;
+      answer: string;
+      tags?: string;
+    }>;
     status: string;
     confidence: number;
     chunkId: string;
@@ -77,7 +74,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAiEditing, setIsAiEditing] = useState(false);
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
-  const [availableTags, setAvailableTags] = useState([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
 
   // Predefined tags that can be selected from dropdown
   const predefinedTags = [
@@ -157,18 +154,33 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   //   }
   // };
 
+  const parseDatasetTags = (tagsString: string) => {
+    try {
+      return JSON.parse(tagsString || "[]");
+    } catch (e) {
+      return [];
+    }
+  };
+
   useEffect(() => {
     if (qa) {
       setQuestion(qa.question);
-      setAnswer(
-        qa.answers?.[qa.answers?.length - 1]?.answer || qa.answer || ""
-      );
+      setAnswer(qa.answers?.[qa.answers?.length - 1]?.answer || "");
       setStatus("pending");
       // setRating(qa.rating || 0);
-      setCustomTags(qa.tags || []);
+      console.log(
+        "qa.answers?.[qa.answers?.length - 1]?.answer?.tags",
+        qa.answers?.[qa.answers?.length - 1]?.tags
+      );
+      setCustomTags(
+        parseDatasetTags(qa.answers?.[qa.answers?.length - 1]?.tags || "[]") ||
+          []
+      );
       setNote(qa.note || "");
     }
   }, [qa]);
+
+  console.log("Custom Tags", customTags);
 
   const handleAiEdit = async () => {
     setIsAiEditing(true);
@@ -217,15 +229,20 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   };
 
   const selectPredefinedTag = (tag: string) => {
+    console.log("Selecting tag:", tag, "Current tags:", customTags);
     if (!customTags.includes(tag)) {
-      setCustomTags([...customTags, tag]);
+      const newTags = [...customTags, tag];
+      setCustomTags(newTags);
+      updateMetadata({ tags: newTags });
     }
     setTagDropdownOpen(false);
     setNewTag("");
   };
 
   const removeCustomTag = (tagToRemove: string) => {
-    setCustomTags(customTags.filter((tag) => tag !== tagToRemove));
+    const newTags = customTags.filter((tag) => tag !== tagToRemove);
+    setCustomTags(newTags);
+    updateMetadata({ tags: newTags });
   };
 
   // Filter predefined tags to exclude already selected ones
@@ -235,7 +252,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
       tag.toLowerCase().includes(newTag.toLowerCase())
   );
 
-  const updateMetadata = async (updates) => {
+  const updateMetadata = async (updates: any) => {
     const dataset = qa?.answers?.[qa.answers.length - 1];
     // if (loading) return;
 
@@ -253,7 +270,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
     // setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/projects/${ProjectData.id}/datasets/${dataset.id}`,
+        `${API_URL}/api/projects/${ProjectData.id}/datasets/${dataset?.id}`,
         {
           method: "PATCH",
           headers: {
@@ -295,6 +312,8 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
     } finally {
     }
   };
+
+  console.log("availablePredefinedTags", availablePredefinedTags);
 
   if (!qa) return null;
 
@@ -362,6 +381,16 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                 placeholder="Enter the answer..."
                 className={isAiEditing ? "opacity-50" : ""}
               />
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <Button
+                  onClick={() => {
+                    updateMetadata({ answer: answer });
+                  }}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Saving..." : "Save Answer"}
+                </Button>
+              </div>
             </div>
             {/* Source Information */}
             <div className="p-3 bg-muted/50 rounded-lg">
@@ -531,45 +560,73 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                       </div>
                     </PopoverTrigger>
                     <PopoverContent className="w-64 p-0" align="start">
-                      <Command>
-                        <CommandList>
-                          {availablePredefinedTags.length > 0 && (
-                            <CommandGroup heading="Suggested Tags">
-                              {availablePredefinedTags.map((tag) => (
-                                <CommandItem
-                                  key={tag}
-                                  onSelect={() => selectPredefinedTag(tag)}
-                                  className="cursor-pointer"
-                                >
-                                  <Check className="mr-2 h-3 w-3 opacity-0" />
-                                  <span className="text-xs">{tag}</span>
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
+                      <div className="max-h-60 overflow-y-auto">
+                        {availablePredefinedTags.length > 0 && (
+                          <div>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b">
+                              Suggested Tags
+                            </div>
+                            {availablePredefinedTags.map((tag) => (
+                              <div
+                                key={tag}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log("Clicking on tag:", tag);
+                                  selectPredefinedTag(tag);
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log("Mouse down on tag:", tag);
+                                  selectPredefinedTag(tag);
+                                }}
+                                className="flex items-center px-2 py-1.5 text-xs hover:bg-accent cursor-pointer transition-colors"
+                              >
+                                <Check className="mr-2 h-3 w-3 opacity-0" />
+                                <span>{tag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {newTag.trim() &&
+                          !availableTags.includes(newTag.trim()) && (
+                            <div>
+                              <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground border-b border-t">
+                                Create New
+                              </div>
+                              <div
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  console.log(
+                                    "Creating new tag:",
+                                    newTag.trim()
+                                  );
+                                  addCustomTag();
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  console.log(
+                                    "Mouse down - Creating new tag:",
+                                    newTag.trim()
+                                  );
+                                  addCustomTag();
+                                }}
+                                className="flex items-center px-2 py-1.5 text-xs hover:bg-accent cursor-pointer transition-colors"
+                              >
+                                <Plus className="mr-2 h-3 w-3" />
+                                <span>Create "{newTag.trim()}"</span>
+                              </div>
+                            </div>
                           )}
-                          {newTag.trim() &&
-                            !availableTags.includes(newTag.trim()) && (
-                              <CommandGroup heading="Create New">
-                                <CommandItem
-                                  onClick={addCustomTag}
-                                  // onSelect={addCustomTag}
-                                  className="cursor-pointer"
-                                >
-                                  <Plus className="mr-2 h-3 w-3" />
-                                  <span className="text-xs">
-                                    Create "{newTag.trim()}"
-                                  </span>
-                                </CommandItem>
-                              </CommandGroup>
-                            )}
-                          {availablePredefinedTags.length === 0 &&
-                            !newTag.trim() && (
-                              <CommandEmpty className="text-xs py-4">
-                                No tags available
-                              </CommandEmpty>
-                            )}
-                        </CommandList>
-                      </Command>
+                        {availablePredefinedTags.length === 0 &&
+                          !newTag.trim() && (
+                            <div className="px-2 py-4 text-xs text-center text-muted-foreground">
+                              No tags available
+                            </div>
+                          )}
+                      </div>
                     </PopoverContent>
                   </Popover>
                   <Button size="sm" onClick={addCustomTag} className="h-8 px-2">
