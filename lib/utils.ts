@@ -1,8 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-// export const API_URL = "https://hkscss-cms.vercel.app";
-export const API_URL = "http://localhost:1717";
+export const API_URL = "https://hkscss-cms.vercel.app";
+// export const API_URL = "http://localhost:1717";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
