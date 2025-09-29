@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import axios from "axios";
 
-import { selectedModel } from "@/lib/utils";
+import { API_URL, selectedModel } from "@/lib/utils";
 
 export function useGenerateDataset() {
   const model = selectedModel;
@@ -17,7 +17,7 @@ export function useGenerateDataset() {
       // 调用API生成数据集
       const currentLanguage = "en";
       toast.promise(
-        axios.post(`http://localhost:1717/api/projects/${projectId}/datasets`, {
+        axios.post(`${API_URL}/api/projects/${projectId}/datasets`, {
           questionId,
           model,
           language: currentLanguage,

@@ -1,5 +1,6 @@
 "use client";
 
+import { API_URL } from "@/lib/utils";
 import { useState, useCallback } from "react";
 // import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
@@ -25,7 +26,7 @@ export default function useChunks(projectId, currentFilter = "all") {
       try {
         setLoading(true);
         const response = await fetch(
-          `http://localhost:1717/api/projects/${projectId}/split?filter=${filter}`
+          `${API_URL}/api/projects/${projectId}/split?filter=${filter}`
         );
 
         if (!response.ok) {
@@ -59,7 +60,7 @@ export default function useChunks(projectId, currentFilter = "all") {
     async (chunkId) => {
       try {
         const response = await fetch(
-          `http://localhost:1717/api/projects/${projectId}/chunks/${encodeURIComponent(
+          `${API_URL}/api/projects/${projectId}/chunks/${encodeURIComponent(
             chunkId
           )}`,
           {

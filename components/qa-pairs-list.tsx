@@ -17,7 +17,12 @@ import {
   Trash2,
   RefreshCw,
 } from "lucide-react";
-import { generateDummyDocument, ProjectData, selectedModel } from "@/lib/utils";
+import {
+  API_URL,
+  generateDummyDocument,
+  ProjectData,
+  selectedModel,
+} from "@/lib/utils";
 import { QAViewModal } from "@/components/modals/qa-view-modal";
 import { QAEditModal } from "@/components/modals/qa-edit-modal";
 import { QACreateModal } from "@/components/modals/qa-create-modal";
@@ -47,7 +52,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
     try {
       // 获取问题列表
       const questionsResponse = await axios.get(
-        `http://localhost:1717/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
+        `${API_URL}/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
       );
       if (questionsResponse.status !== 200) {
         throw new Error("Failed to fetch questions");
@@ -57,7 +62,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
       // 获取标签树
       const tagsResponse = await axios.get(
-        `http://localhost:1717/api/projects/${ProjectData.id}/tags`
+        `${API_URL}/api/projects/${ProjectData.id}/tags`
       );
       if (tagsResponse.status !== 200) {
         throw new Error("common.fetchError");
@@ -176,7 +181,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
     try {
       const response = await axios.delete(
-        `http://localhost:1717/api/projects/${ProjectData.id}/questions/${questionId}`
+        `${API_URL}/api/projects/${ProjectData.id}/questions/${questionId}`
       );
 
       if (response.status === 200 || response.status === 204) {
@@ -221,7 +226,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
   const handleSubmitQuestion = async (formData: any) => {
     try {
       const response = await axios.post(
-        `http://localhost:1717/api/projects/${ProjectData.id}/questions`,
+        `${API_URL}/api/projects/${ProjectData.id}/questions`,
         {
           question: formData.question,
           chunkId: formData.chunkId,
@@ -301,7 +306,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
         // Check if the answer is now available
         const updatedQuestions = await axios.get(
-          `http://localhost:1717/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
+          `${API_URL}/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
         );
 
         const updatedQuestion = updatedQuestions.data.data.find(

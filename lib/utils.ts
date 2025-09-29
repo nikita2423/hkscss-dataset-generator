@@ -1,37 +1,65 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
+export const API_URL = "https://hkscss-cms.vercel.app";
+// export const API_URL = "http://localhost:1717";
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// export const ProjectData = {
+//   id: "aEZQMFS9s5l3",
+//   name: "HKCSS",
+//   description: "",
+//   globalPrompt: "use english",
+//   questionPrompt:
+//     "Try to keep it concise and generate question in english only",
+//   answerPrompt:
+//     'For each generated question, provide a precise answer grounded only in the source text. Always include the section , page and doc_id and keep the answers in 200 words \nGuidelines:\n- Copy critical wording directly from the law or code.\n- If the section lists items, return the answer as a bullet list.\n- If bilingual source text is provided, produce only English answers.\n- If the answer is not found in the given text, respond with: "Not specified in this section."\n- Always include reference metadata: {doc_id, section, page}.\n',
+//   labelPrompt: "",
+//   domainTreePrompt:
+//     'Analyze the provided section and identify its domain and sub-domain for organizing Q&A. \nExample:\n- Domain: Licensing\n- Sub-domain: Application requirements\n- Section: Part II, Section 5\nReturn as JSON: {"domain":"Licensing","subdomain":"Application","section":"Part II Section 5"}\n',
+//   cleanPrompt:
+//     "Clean and normalize generated questions and answers:\n- Remove duplicates.\n- Standardize phrasing of similar questions.\n- Ensure answers follow the same style (bullets for lists, citations included).\n- Trim unnecessary words, keep answers concise but faithful to the source.\n- Verify output is aligned in meaning.\n",
+//   defaultModelConfigId: "gpNt6ld-dZ83",
+//   test: "",
+//   createAt: "2025-09-22T10:00:07.081Z",
+//   updateAt: "2025-09-22T16:16:10.032Z",
+//   _count: {
+//     Datasets: 0,
+//     Questions: 0,
+//   },
+// };
+
 export const ProjectData = {
-  id: "aEZQMFS9s5l3",
-  name: "HKCSS",
+  id: "w4a6Gfze-zNb",
+  name: "HKSCSS Datatsets",
   description: "",
   globalPrompt: "use english",
   questionPrompt:
-    "Try to keep it concise and generate question in english only",
+    "You are given a text chunk from a legal or compliance document (e.g., Residential Care Homes Ordinance, Code of Practice, application form, or guideline).\n\nGenerate **3–5 clear, self-contained questions** that a person might ask about this chunk.\n\nRules:\n- Questions must be directly answerable using only the given text.\n- Paraphrase naturally; do not just copy sentences.\n- Avoid references to section numbers, page numbers, or metadata.\n- Focus on practical, factual queries (what, when, who, how, requirements, definitions).\n- Return only the list of questions.\n",
   answerPrompt:
-    'For each generated question, provide a precise answer grounded only in the source text. Always include the section , page and doc_id and keep the answers in 200 words \nGuidelines:\n- Copy critical wording directly from the law or code.\n- If the section lists items, return the answer as a bullet list.\n- If bilingual source text is provided, produce only English answers.\n- If the answer is not found in the given text, respond with: "Not specified in this section."\n- Always include reference metadata: {doc_id, section, page}.\n',
+    "You are an expert at producing clear, explanatory answers from legal and compliance documents.\n\nYou are given a text chunk and one of the questions generated from it.\n\nWrite a direct, natural-language answer to the question.\n\nRules:\n- Do not return section numbers, page numbers, or doc IDs.\n- Use your own words to summarize the meaning.\n- Keep answers factual, concise, and reader-friendly.\n- If the text defines a term, explain it clearly.\n- If requirements or processes are listed, summarize them step by step.\n- Return only the final answer.\n",
   labelPrompt: "",
   domainTreePrompt:
-    'Analyze the provided section and identify its domain and sub-domain for organizing Q&A. \nExample:\n- Domain: Licensing\n- Sub-domain: Application requirements\n- Section: Part II, Section 5\nReturn as JSON: {"domain":"Licensing","subdomain":"Application","section":"Part II Section 5"}\n',
+    'Given a question and its answer, classify them into a hierarchical structure:\n\n- domain: Broad area (e.g., "Licensing", "Compliance", "Guidelines")\n- subdomain: More specific area (e.g., "Application", "Renewal", "Drug Management")\n- section: Thematic grouping from the text if identifiable (e.g., "Part II Section 5")\n\nReturn the result in JSON:\n{"domain":"...", "subdomain":"...", "section":"..."}\n',
   cleanPrompt:
-    "Clean and normalize generated questions and answers:\n- Remove duplicates.\n- Standardize phrasing of similar questions.\n- Ensure answers follow the same style (bullets for lists, citations included).\n- Trim unnecessary words, keep answers concise but faithful to the source.\n- Verify output is aligned in meaning.\n",
-  defaultModelConfigId: "gpNt6ld-dZ83",
+    "Clean and normalize generated questions and answers:\n\n- Remove duplicates.\n- Standardize phrasing of similar questions.\n- Ensure questions are clear and grammatically correct.\n- Ensure answers are concise, in plain English, and free of metadata (no section/page references).\n- Keep only unique GA pairs.\n",
+  defaultModelConfigId: "dd0jAqYB2F1e",
   test: "",
-  createAt: "2025-09-22T10:00:07.081Z",
-  updateAt: "2025-09-22T16:16:10.032Z",
+  createAt: "2025-09-29T18:39:05.106Z",
+  updateAt: "2025-09-29T18:50:42.634Z",
   _count: {
-    Datasets: 0,
-    Questions: 0,
+    Datasets: 1,
+    Questions: 369,
   },
 };
 
 export const selectedModel = {
-  id: "gpNt6ld-dZ83",
-  projectId: "aEZQMFS9s5l3",
+  // id: "gpNt6ld-dZ83",
+  id: "dd0jAqYB2F1e",
+  projectId: "w4a6Gfze-zNb",
   providerId: "openRouter",
   providerName: "OpenRouter",
   endpoint: "https://openrouter.ai/api/v1/",

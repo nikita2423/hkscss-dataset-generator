@@ -13,7 +13,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Settings } from "lucide-react";
 import axios from "axios";
 import { getContent } from "@/lib/file/file-process";
-import { ProjectData } from "@/lib/utils";
+import { API_URL, ProjectData } from "@/lib/utils";
 import useFileProcessing from "./useFileProcessing";
 import useChunks from "@/components/useChunks";
 import useFileProcessingStatus from "./useFileProcessingStatus";
@@ -64,7 +64,7 @@ export default function HomePage() {
     let config = {
       method: "get",
       maxBodyLength: Infinity,
-      url: "http://localhost:1717/api/projects/aEZQMFS9s5l3/files?page=1&pageSize=10",
+      url: `${API_URL}/api/projects/${ProjectData.id}/files?page=1&pageSize=10`,
       headers: {
         // withCredentials: "true",
       },
@@ -87,7 +87,7 @@ export default function HomePage() {
   const fetchUploadedFiles = async () => {
     try {
       const response = await axios.get(
-        `http://localhost:1717/api/projects/${ProjectData.id}/files?page=1&pageSize=10`,
+        `${API_URL}/api/projects/${ProjectData.id}/files?page=1&pageSize=10`,
         {
           headers: {
             // withCredentials: "true",
@@ -133,7 +133,7 @@ export default function HomePage() {
 
     try {
       const response = await axios.get(
-        `http://localhost:1717/api/projects/${projectId}/tasks/list?status=0`
+        `${API_URL}/api/projects/${projectId}/tasks/list?status=0`
       );
       if (response.data?.code === 0) {
         const tasks = response.data.data || [];
@@ -182,18 +182,23 @@ export default function HomePage() {
   useEffect(() => {
     const currentTaskCount = tasks.length;
     const hasActiveFileTask = tasks.some(
-      (task: any) => task.projectId === ProjectData.id && task.taskType === "file-processing"
+      (task: any) =>
+        task.projectId === ProjectData.id && task.taskType === "file-processing"
     );
-    
+
     // If task count decreased (task completed) and no active file tasks, refresh chunks
-    if (prevTaskCount > 0 && currentTaskCount < prevTaskCount && !hasActiveFileTask) {
+    if (
+      prevTaskCount > 0 &&
+      currentTaskCount < prevTaskCount &&
+      !hasActiveFileTask
+    ) {
       console.log("File processing task completed, refreshing chunks...");
       setTimeout(() => {
         fetchChunks("all");
         fetchUploadedFiles();
       }, 2000); // Wait 2 seconds for backend to finish processing
     }
-    
+
     setPrevTaskCount(currentTaskCount);
   }, [tasks, prevTaskCount, fetchChunks]);
 
@@ -221,7 +226,7 @@ export default function HomePage() {
     fileName,
   }: any) => {
     try {
-      const url = `http://localhost:1717/api/projects/${projectId}/files`;
+      const url = `${API_URL}/api/projects/${projectId}/files`;
 
       const response = await axios.post(
         url,
@@ -245,7 +250,11 @@ export default function HomePage() {
     }
   };
 
-  const handleUploadSuccess = async (fileNames: any[], pdfFiles: File[], domainTreeAction: string) => {
+  const handleUploadSuccess = async (
+    fileNames: any[],
+    pdfFiles: File[],
+    domainTreeAction: string
+  ) => {
     try {
       await handleFileProcessing(fileNames, "default", "", domainTreeAction);
       // location.reload();
@@ -254,7 +263,10 @@ export default function HomePage() {
     }
   };
 
-  const handleStartUpload = async (domainTreeActionType = "rebuild", files: File[]) => {
+  const handleStartUpload = async (
+    domainTreeActionType = "rebuild",
+    files: File[]
+  ) => {
     // setUploading(true);
     console.log("Starting upload for files:", files, domainTreeActionType);
     try {
@@ -378,7 +390,9 @@ export default function HomePage() {
         return <QAPairsList chunks={chunks} />;
 
       case "chunks":
-        return <ChunksList chunks={chunks} onRefresh={() => fetchChunks("all")} />;
+        return (
+          <ChunksList chunks={chunks} onRefresh={() => fetchChunks("all")} />
+        );
 
       case "dataset":
         return <DatasetExport />;

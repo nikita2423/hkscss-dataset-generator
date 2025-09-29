@@ -7,6 +7,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 // import i18n from "@/lib/i18n";
 import axios from "axios";
+import { API_URL } from "@/lib/utils";
 
 /**
  * 文件处理的自定义Hook
@@ -60,7 +61,7 @@ export default function useFileProcessing(projectId) {
         console.log("Vision Model", "", pdfStrategy, domainTreeAction);
 
         const response = await axios.post(
-          `http://localhost:1717/api/projects/${projectId}/tasks`,
+          `${API_URL}/api/projects/${projectId}/tasks`,
           {
             taskType: "file-processing",
             modelInfo: localStorage.getItem("selectedModelInfo"),
