@@ -20,10 +20,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { StarRating } from "@/components/ui/star-rating";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Edit, Sparkles, Plus, X } from "lucide-react";
-import { ProjectData } from "@/lib/utils";
+import { Edit, Sparkles, Plus, X, Check, ChevronDown } from "lucide-react";
+import { API_URL, ProjectData } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface QAEditModalProps {
   isOpen: boolean;
@@ -31,10 +45,12 @@ interface QAEditModalProps {
   qa: {
     id: string;
     question: string;
-    answer: string;
+    answer?: string;
+    answers?: Array<{ answer: string }>;
     status: string;
     confidence: number;
     chunkId: string;
+    chunk?: { name: string };
     model?: string;
     label?: string;
     createdAt?: string;
@@ -50,7 +66,9 @@ interface QAEditModalProps {
 
 export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   const [question, setQuestion] = useState(qa?.question || "");
-  const [answer, setAnswer] = useState(qa?.answer || "");
+  const [answer, setAnswer] = useState(
+    qa?.answers?.[0]?.answer || qa?.answer || ""
+  );
   const [status, setStatus] = useState(qa?.status || "pending");
   const [rating, setRating] = useState(qa?.rating || 0);
   const [customTags, setCustomTags] = useState<string[]>(qa?.customTags || []);
@@ -58,6 +76,46 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   const [newTag, setNewTag] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAiEditing, setIsAiEditing] = useState(false);
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+  const [availableTags, setAvailableTags] = useState([]);
+
+  // Predefined tags that can be selected from dropdown
+  const predefinedTags = [
+    "Legal",
+    "Technical",
+    "Business",
+    "Academic",
+    "General",
+    "Important",
+    "Complex",
+    "Simple",
+    "Review Required",
+    "Verified",
+    "Draft",
+    "Final",
+  ];
+
+  useEffect(() => {
+    const projectId = ProjectData.id;
+    const fetchAvailableTags = async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/api/projects/${projectId}/datasets/tags`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          console.log("Available Tags", data.tags);
+          setAvailableTags(data.tags || []);
+        }
+      } catch (error) {
+        console.error("获取可用标签失败:", error);
+      }
+    };
+
+    if (projectId) {
+      fetchAvailableTags();
+    }
+  }, []);
 
   // const handleSave = async (field, value) => {
   //   try {
@@ -102,10 +160,12 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   useEffect(() => {
     if (qa) {
       setQuestion(qa.question);
-      setAnswer(qa.answer);
-      setStatus(qa.status);
-      setRating(qa.rating || 0);
-      setCustomTags(qa.customTags || []);
+      setAnswer(
+        qa.answers?.[qa.answers?.length - 1]?.answer || qa.answer || ""
+      );
+      setStatus("pending");
+      // setRating(qa.rating || 0);
+      setCustomTags(qa.tags || []);
       setNote(qa.note || "");
     }
   }, [qa]);
@@ -138,11 +198,8 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
         rating,
         customTags,
         note,
-        characterCount:
-          qa.answers?.[qa.answers?.length - 1]?.answer?.length || 0,
-        tokenCount: Math.ceil(
-          qa.answers?.[qa.answers?.length - 1]?.answer?.split(" ").length * 0.75
-        ), // Rough token estimation
+        characterCount: answer.length || 0,
+        tokenCount: Math.ceil(answer.split(" ").length * 0.75), // Rough token estimation
       });
       setIsLoading(false);
       onClose();
@@ -150,14 +207,93 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
   };
 
   const addCustomTag = () => {
+    console.log("Add Custom Tags", newTag, customTags);
     if (newTag.trim() && !customTags.includes(newTag.trim())) {
-      setCustomTags([...customTags, newTag.trim()]);
+      // setCustomTags([...customTags, newTag.trim()]);
+      updateMetadata({ tags: [...customTags, newTag.trim()] });
       setNewTag("");
+      setTagDropdownOpen(false);
     }
+  };
+
+  const selectPredefinedTag = (tag: string) => {
+    if (!customTags.includes(tag)) {
+      setCustomTags([...customTags, tag]);
+    }
+    setTagDropdownOpen(false);
+    setNewTag("");
   };
 
   const removeCustomTag = (tagToRemove: string) => {
     setCustomTags(customTags.filter((tag) => tag !== tagToRemove));
+  };
+
+  // Filter predefined tags to exclude already selected ones
+  const availablePredefinedTags = availableTags.filter(
+    (tag) =>
+      !customTags.includes(tag) &&
+      tag.toLowerCase().includes(newTag.toLowerCase())
+  );
+
+  const updateMetadata = async (updates) => {
+    const dataset = qa?.answers?.[qa.answers.length - 1];
+    // if (loading) return;
+
+    // 立即更新本地状态，提升响应速度
+    // if (updates.score !== undefined) {
+    //   setLocalScore(updates.score);
+    // }
+    if (updates.tags !== undefined) {
+      setCustomTags(updates.tags);
+    }
+    // if (updates.note !== undefined) {
+    //   setLocalNote(updates.note);
+    // }
+
+    // setLoading(true);
+    try {
+      const response = await fetch(
+        `${API_URL}/api/projects/${ProjectData.id}/datasets/${dataset.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(updates),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("更新失败");
+      }
+
+      const result = await response.json();
+
+      // 显示成功提示
+
+      toast.success("Dataset metadata updated");
+
+      // 如果有父组件的更新回调，调用它
+      // if (onUpdate) {
+      //   onUpdate(result.dataset);
+      // }
+    } catch (error) {
+      console.error("更新数据集元数据失败:", error);
+      // 显示错误提示
+      toast.error("Failed to update dataset metadata");
+
+      // // 出错时恢复本地状态
+      // if (updates.score !== undefined) {
+      //   setLocalScore(dataset.score || 0);
+      // }
+      // if (updates.tags !== undefined) {
+      //   setLocalTags(parseDatasetTags(dataset.tags));
+      // }
+      // if (updates.note !== undefined) {
+      //   setLocalNote(dataset.note || "");
+      // }
+    } finally {
+    }
   };
 
   if (!qa) return null;
@@ -183,14 +319,13 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                 placeholder="Enter the question..."
               />
             </div>
-
             {/* Answer with AI Edit */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="answer">Answer</Label>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {qa.answers?.[qa.answers?.length - 1]?.answer?.length || 0}{" "}
+                    {(qa?.answers?.[0]?.answer || qa?.answer || "").length}{" "}
                     Characters
                   </Badge>
                   {/* <Badge variant="outline">
@@ -226,19 +361,18 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                 rows={8}
                 placeholder="Enter the answer..."
                 className={isAiEditing ? "opacity-50" : ""}
-                value={qa?.answers?.length !== 0 ? qa.answers?.[0]?.answer : ""}
               />
             </div>
-
             {/* Source Information */}
             <div className="p-3 bg-muted/50 rounded-lg">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant="outline">Source: Chunk {qa.chunk?.name}</Badge>
+                <Badge variant="outline">
+                  Source: Chunk {qa.chunk?.name || qa.chunkId}
+                </Badge>
                 {/* <span>•</span>
                 <span>Confidence: {Math.round(qa.confidence * 100)}%</span> */}
               </div>
-            </div>
-
+            </div>{" "}
             {/* COT Section */}
             {/* <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -300,6 +434,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                   >
                     Text Chunk:{" "}
                     {qa.chunk?.name ||
+                      qa.chunkId ||
                       "Cap 459 Consolidated version for the..."}
                   </Badge>
                 </div>
@@ -373,13 +508,70 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                   ))}
                 </div>
                 <div className="flex gap-2">
-                  <Input
-                    placeholder="Add custom tag..."
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && addCustomTag()}
-                    className="h-8 text-xs"
-                  />
+                  <Popover
+                    open={tagDropdownOpen}
+                    onOpenChange={setTagDropdownOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <div className="relative flex-1">
+                        <Input
+                          placeholder="Add or search tags..."
+                          value={newTag}
+                          onChange={(e) => {
+                            setNewTag(e.target.value);
+                            setTagDropdownOpen(true);
+                          }}
+                          onFocus={() => setTagDropdownOpen(true)}
+                          onKeyPress={(e) =>
+                            e.key === "Enter" && addCustomTag()
+                          }
+                          className="h-8 text-xs pr-8"
+                        />
+                        <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      </div>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-0" align="start">
+                      <Command>
+                        <CommandList>
+                          {availablePredefinedTags.length > 0 && (
+                            <CommandGroup heading="Suggested Tags">
+                              {availablePredefinedTags.map((tag) => (
+                                <CommandItem
+                                  key={tag}
+                                  onSelect={() => selectPredefinedTag(tag)}
+                                  className="cursor-pointer"
+                                >
+                                  <Check className="mr-2 h-3 w-3 opacity-0" />
+                                  <span className="text-xs">{tag}</span>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          )}
+                          {newTag.trim() &&
+                            !availableTags.includes(newTag.trim()) && (
+                              <CommandGroup heading="Create New">
+                                <CommandItem
+                                  onClick={addCustomTag}
+                                  // onSelect={addCustomTag}
+                                  className="cursor-pointer"
+                                >
+                                  <Plus className="mr-2 h-3 w-3" />
+                                  <span className="text-xs">
+                                    Create "{newTag.trim()}"
+                                  </span>
+                                </CommandItem>
+                              </CommandGroup>
+                            )}
+                          {availablePredefinedTags.length === 0 &&
+                            !newTag.trim() && (
+                              <CommandEmpty className="text-xs py-4">
+                                No tags available
+                              </CommandEmpty>
+                            )}
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <Button size="sm" onClick={addCustomTag} className="h-8 px-2">
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -407,7 +599,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
             </Card>
           </div>
         </div>
-
+        {/* 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             Cancel
@@ -415,7 +607,7 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
           <Button onClick={handleSave} disabled={isLoading}>
             {isLoading ? "Saving..." : "Save Changes"}
           </Button>
-        </DialogFooter>
+        </DialogFooter> */}
       </DialogContent>
     </Dialog>
   );

@@ -13,7 +13,12 @@ import {
   WandSparkles,
   RefreshCw,
 } from "lucide-react";
-import { generateDummyDocument, ProjectData, selectedModel } from "@/lib/utils";
+import {
+  API_URL,
+  generateDummyDocument,
+  ProjectData,
+  selectedModel,
+} from "@/lib/utils";
 import { ChunkViewModal } from "@/components/modals/chunk-view-modal";
 import { toast } from "sonner";
 import axios from "axios";
@@ -61,7 +66,7 @@ export function ChunksList({
     try {
       // 调用创建任务接口
       const response = await axios.post(
-        `http://localhost:1717/api/projects/${ProjectData.id}/tasks`,
+        `${API_URL}/api/projects/${ProjectData.id}/tasks`,
         {
           taskType: "question-generation",
           modelInfo: selectedModel,

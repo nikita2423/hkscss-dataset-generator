@@ -114,7 +114,14 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
   useEffect(() => {
     getQuestionList(currentPage, pageSize);
-  }, [generationInProgress, searchTerm, currentPage, pageSize, selectedStatus]);
+  }, [
+    generationInProgress,
+    searchTerm,
+    currentPage,
+    pageSize,
+    selectedStatus,
+    isEditModalOpen,
+  ]);
 
   // Add a separate effect to refresh data periodically when processing
   useEffect(() => {
@@ -376,7 +383,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
     }
   };
 
-  console.log("Filtered Questions", filteredQuestions);
+  // console.log("Filtered Questions", filteredQuestions);
 
   return (
     <div className="space-y-6">
