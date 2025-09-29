@@ -7,6 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
   Search,
   Eye,
   Edit,
@@ -37,9 +46,16 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [questions, setQuestions] = useState<{ data?: any[]; total?: number }>(
-    {}
-  );
+  const [questions, setQuestions] = useState<{
+    data?: any[];
+    total?: number;
+    page?: number;
+    size?: number;
+    totalPages?: number;
+  }>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [loading, setLoading] = useState(false);
   // const [chunks, setChunks] = useState([]);
   const { generateSingleDataset } = useGenerateDataset();
   const [generationInProgress, setGenerationInProgress] = useState(false);
@@ -48,31 +64,36 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
   }>({});
   const [tags, setTags] = useState([]);
 
-  const getQuestionList = async () => {
+  const getQuestionList = async (page = currentPage, size = pageSize) => {
     try {
+      setLoading(true);
       // 获取问题列表
       const questionsResponse = await axios.get(
-        `${API_URL}/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
+        `${API_URL}/api/projects/${ProjectData.id}/questions?page=${page}&size=${size}&status=${selectedStatus}&input=${searchTerm}`
       );
       if (questionsResponse.status !== 200) {
         throw new Error("Failed to fetch questions");
       }
-      const questions = [...questionsResponse.data.data];
-      setQuestions({ ...questionsResponse?.data });
+      const questionsData = questionsResponse.data;
+      setQuestions({
+        ...questionsData,
+        totalPages: Math.ceil(questionsData.total / size),
+      });
 
-      // 获取标签树
-      const tagsResponse = await axios.get(
-        `${API_URL}/api/projects/${ProjectData.id}/tags`
-      );
-      if (tagsResponse.status !== 200) {
-        throw new Error("common.fetchError");
+      // 获取标签树 (只fetch once or when needed)
+      if (tags.length === 0) {
+        const tagsResponse = await axios.get(
+          `${API_URL}/api/projects/${ProjectData.id}/tags`
+        );
+        if (tagsResponse.status === 200) {
+          setTags(tagsResponse.data.tags || []);
+        }
       }
-      setTags(tagsResponse.data.tags || []);
-
-      // setLoading(false);
     } catch (error: any) {
       console.error("Failed to fetch questions", error);
       toast.error(error?.message || "Failed to fetch questions");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -92,8 +113,8 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
   const getRootTags = async () => {};
 
   useEffect(() => {
-    getQuestionList();
-  }, [generationInProgress, searchTerm]);
+    getQuestionList(currentPage, pageSize);
+  }, [generationInProgress, searchTerm, currentPage, pageSize, selectedStatus]);
 
   // Add a separate effect to refresh data periodically when processing
   useEffect(() => {
@@ -110,23 +131,38 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
   // Manual refresh function
   const handleManualRefresh = async () => {
-    await getQuestionList();
+    await getQuestionList(currentPage, pageSize);
     toast.success("Questions refreshed!");
+  };
+
+  // Pagination handlers
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1); // Reset to first page when changing page size
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < (questions.totalPages || 1)) {
+      setCurrentPage(currentPage + 1);
+    }
   };
 
   // Get dummy data for demonstration
   // const dummyDoc = generateDummyDocument();
   // const allQuestions = dummyDoc.questions;
 
-  const filteredQuestions = questions?.data?.filter((qa) => {
-    const matchesSearch = qa.question
-      .toLowerCase()
-      .includes(searchTerm.toLowerCase());
-    // const matchesStatus =
-    //   selectedStatus === "all" || qa.status === selectedStatus;
-
-    return matchesSearch;
-  });
+  // Use server-side filtered questions directly (no client-side filtering needed)
+  const filteredQuestions = questions?.data || [];
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -306,7 +342,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
 
         // Check if the answer is now available
         const updatedQuestions = await axios.get(
-          `${API_URL}/api/projects/${ProjectData.id}/questions?page=1&size=100&status=all&input=${searchTerm}`
+          `${API_URL}/api/projects/${ProjectData.id}/questions?page=${currentPage}&size=${pageSize}&status=${selectedStatus}&input=${searchTerm}`
         );
 
         const updatedQuestion = updatedQuestions.data.data.find(
@@ -490,14 +526,17 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
                     <Eye className="h-4 w-4 mr-1" />
                     View
                   </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(qa)}
-                  >
-                    <Edit className="h-4 w-4 mr-1" />
-                    Edit
-                  </Button>
+                  {qa?.answers?.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEdit(qa)}
+                    >
+                      <Edit className="h-4 w-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -519,7 +558,7 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
                   </h4>
                   <p className="text-sm leading-relaxed">
                     {qa?.answers?.length !== 0
-                      ? qa.answers?.[0]?.answer
+                      ? qa.answers?.[qa.answers?.length - 1]?.answer
                       : "No answer available"}
                   </p>
                 </div>
@@ -538,7 +577,14 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
         ))}
       </div>
 
-      {filteredQuestions?.length === 0 && (
+      {loading && (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading questions...</p>
+        </div>
+      )}
+
+      {!loading && filteredQuestions.length === 0 && (
         <div className="text-center py-12">
           <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
           <h3 className="text-lg font-medium mb-2">No Q&A pairs found</h3>
@@ -547,6 +593,116 @@ export function QAPairsList({ chunks }: { chunks: any[] }) {
               ? "Try adjusting your search terms"
               : "Upload and process documents to generate Q&A pairs"}
           </p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && questions.total && questions.total > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              Showing {(currentPage - 1) * pageSize + 1} to{" "}
+              {Math.min(currentPage * pageSize, questions.total)} of{" "}
+              {questions.total} questions
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                Items per page:
+              </span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="border border-border rounded px-2 py-1 text-sm"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePreviousPage();
+                    }}
+                    className={
+                      currentPage <= 1
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+
+                {/* Generate page numbers */}
+                {Array.from(
+                  { length: Math.min(questions.totalPages || 1, 5) },
+                  (_, i) => {
+                    let pageNum;
+                    const totalPages = questions.totalPages || 1;
+
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else {
+                      if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                    }
+
+                    return (
+                      <PaginationItem key={pageNum}>
+                        <PaginationLink
+                          href="#"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            handlePageChange(pageNum);
+                          }}
+                          isActive={currentPage === pageNum}
+                          className="cursor-pointer"
+                        >
+                          {pageNum}
+                        </PaginationLink>
+                      </PaginationItem>
+                    );
+                  }
+                )}
+
+                {questions.totalPages &&
+                  questions.totalPages > 5 &&
+                  currentPage < questions.totalPages - 2 && (
+                    <PaginationItem>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )}
+
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handleNextPage();
+                    }}
+                    className={
+                      currentPage >= (questions.totalPages || 1)
+                        ? "pointer-events-none opacity-50"
+                        : "cursor-pointer"
+                    }
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       )}
 

@@ -1,8 +1,8 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 
-export const API_URL = "https://hkscss-cms.vercel.app";
-// export const API_URL = "http://localhost:1717";
+// export const API_URL = "https://hkscss-cms.vercel.app";
+export const API_URL = "http://localhost:1717";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -63,8 +63,9 @@ export const selectedModel = {
   providerId: "openRouter",
   providerName: "OpenRouter",
   endpoint: "https://openrouter.ai/api/v1/",
+  // apiKey:"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",
   apiKey:
-    "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",
+    "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",
   modelId: "google/gemini-2.5-flash",
   modelName: "google/gemini-2.5-flash",
   type: "text",

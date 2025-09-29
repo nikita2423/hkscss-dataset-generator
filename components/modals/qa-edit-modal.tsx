@@ -138,9 +138,10 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
         rating,
         customTags,
         note,
-        characterCount: qa.answers?.[0]?.answer?.length || 0,
+        characterCount:
+          qa.answers?.[qa.answers?.length - 1]?.answer?.length || 0,
         tokenCount: Math.ceil(
-          qa.answers?.[0]?.answer?.split(" ").length * 0.75
+          qa.answers?.[qa.answers?.length - 1]?.answer?.split(" ").length * 0.75
         ), // Rough token estimation
       });
       setIsLoading(false);
@@ -189,7 +190,8 @@ export function QAEditModal({ isOpen, onClose, qa, onSave }: QAEditModalProps) {
                 <Label htmlFor="answer">Answer</Label>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">
-                    {qa.answers?.[0]?.answer?.length || 0} Characters
+                    {qa.answers?.[qa.answers?.length - 1]?.answer?.length || 0}{" "}
+                    Characters
                   </Badge>
                   {/* <Badge variant="outline">
                     {Math.ceil(

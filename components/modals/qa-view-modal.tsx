@@ -82,7 +82,7 @@ export function QAViewModal({ isOpen, onClose, qa }: QAViewModalProps) {
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm leading-relaxed">
                 {qa?.answers?.length !== 0
-                  ? qa.answers?.[0]?.answer
+                  ? qa.answers?.[qa.answers?.length - 1]?.answer
                   : "No answer available"}
               </p>
             </div>
